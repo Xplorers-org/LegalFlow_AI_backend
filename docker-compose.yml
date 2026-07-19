@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: legalflow-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-legalflow_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-legalflow_password_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-legalflow_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-legalflow_user} -d ${POSTGRES_DB:-legalflow_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: legalflow-chromadb
+    restart: always
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: legalflow-backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-legalflow_user}:${POSTGRES_PASSWORD:-legalflow_password_secret}@postgres:5432/${POSTGRES_DB:-legalflow_db}
+      - DATABASE_URL_SYNC=postgresql://${POSTGRES_USER:-legalflow_user}:${POSTGRES_PASSWORD:-legalflow_password_secret}@postgres:5432/${POSTGRES_DB:-legalflow_db}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change_this_to_a_secure_random_key_in_production_32_bytes_min}
+      - AI_SERVICE_URL=http://ai-service:8001
+      - RAG_SERVICE_URL=http://rag-service:8002
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./backend:/app/backend
+      - storage_data:/app/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  rag-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.rag
+    container_name: legalflow-rag-service
+    restart: always
+    environment:
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./rag:/app/rag
+    depends_on:
+      - chromadb
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ai
+    container_name: legalflow-ai-service
+    restart: always
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-mistralai/mistral-large-2411}
+      - RAG_SERVICE_URL=http://rag-service:8002
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./ai-service:/app/ai-service
+    depends_on:
+      - rag-service
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: legalflow-n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-n8n_encryption_secret_key_2026}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  postgres_data:
+  chroma_data:
+  storage_data:
+  n8n_data:
