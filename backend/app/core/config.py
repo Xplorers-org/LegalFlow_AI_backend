@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     RAG_SERVICE_URL: str = "http://rag-service:8002"
     BACKEND_WEBHOOK_SECRET: str = "webhook_secret_key_legalflow_2026"
 
+    # Email SMTP Settings
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAILS_FROM_EMAIL: str = "notifications@legalflow.lk"
+    EMAILS_FROM_NAME: str = "LegalFlow AI Commercial Tenancy Platform"
+
     # Storage
     STORAGE_PATH: str = "./data/storage"
 

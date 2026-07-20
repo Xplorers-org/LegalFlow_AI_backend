@@ -1,7 +1,7 @@
 import uuid
 import secrets
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db
@@ -12,6 +12,7 @@ from backend.app.repositories.user_repository import UserRepository
 from backend.app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse
 from backend.app.schemas.user import UserResponse
 from backend.app.models.user import UserRole
+from backend.app.services.email_service import send_tenant_onboarding_email
 from backend.app.core.logging import get_logger
 
 router = APIRouter(prefix="/tenant", tags=["Tenants"])
@@ -21,6 +22,7 @@ logger = get_logger("backend.api.tenants")
 @router.post("", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     tenant_in: TenantCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -45,6 +47,15 @@ async def create_tenant(
             "phone": tenant.phone,
         })
         logger.info("Auto-provisioned login account for new tenant", email=tenant.email)
+
+        # 3. Schedule automated onboarding email to tenant in background
+        background_tasks.add_task(
+            send_tenant_onboarding_email,
+            tenant_name=tenant.name,
+            tenant_email=tenant.email,
+            temp_password=temp_password,
+            company=tenant.company,
+        )
     else:
         temp_password = "ExistingAccountPassword"
 
