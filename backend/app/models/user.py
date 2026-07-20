@@ -7,11 +7,12 @@ from backend.app.models.base_class import BaseModel
 class UserRole(str, Enum):
     LANDLORD = "landlord"
     PROPERTY_MANAGER = "property_manager"
+    TENANT = "tenant"
     ADMIN = "admin"
 
 
 class User(BaseModel):
-    """User entity representing commercial property landlords and property managers."""
+    """User entity representing commercial property landlords, managers, and tenants."""
     __tablename__ = "users"
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)

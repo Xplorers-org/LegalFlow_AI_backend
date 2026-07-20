@@ -29,6 +29,7 @@ class TenantUpdate(BaseModel):
 
 class TenantResponse(TenantBase):
     id: UUID
+    temp_password: str | None = None
     created_at: datetime
     updated_at: datetime
 
