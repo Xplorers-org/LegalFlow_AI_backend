@@ -1,11 +1,11 @@
 from langgraph.graph import StateGraph, END
-from ai-service.state.case_state import CaseState
-from ai-service.agents.financial_agent import financial_agent_node
-from ai-service.agents.lease_parser_agent import lease_parser_node
-from ai-service.agents.legal_research_agent import legal_research_node
-from ai-service.agents.legal_analysis_agent import legal_analysis_node
-from ai-service.agents.drafting_agent import drafting_agent_node
-from ai-service.utils.logging import get_logger
+from ai_service.state.case_state import CaseState
+from ai_service.agents.financial_agent import financial_agent_node
+from ai_service.agents.lease_parser_agent import lease_parser_node
+from ai_service.agents.legal_research_agent import legal_research_node
+from ai_service.agents.legal_analysis_agent import legal_analysis_node
+from ai_service.agents.drafting_agent import drafting_agent_node
+from ai_service.utils.logging import get_logger
 
 logger = get_logger("ai_service.graph")
 

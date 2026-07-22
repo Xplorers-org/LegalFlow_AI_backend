@@ -34,7 +34,7 @@ async def test_connection():
             ssl="require"
         )
 
-        print("✅ Connected to Supabase PostgreSQL")
+        print("Connected to Supabase PostgreSQL")
 
         # Test query
         version = await conn.fetchval("SELECT version();")
@@ -59,7 +59,7 @@ async def test_connection():
         await conn.close()
 
     except Exception as e:
-        print("❌ Connection failed")
+        print("Connection failed")
         print(type(e).__name__, e)
 
 

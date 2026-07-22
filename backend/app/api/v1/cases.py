@@ -8,6 +8,7 @@ from backend.app.api.v1.auth import get_current_user
 from backend.app.repositories.case_repository import CaseRepository
 from backend.app.schemas.case import CaseResponse
 from backend.app.schemas.user import UserResponse
+from backend.app.services.payment_scheduler_service import PaymentSchedulerService
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
 
@@ -41,3 +42,14 @@ async def get_case(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return CaseResponse.model_validate(case)
+
+
+@router.post("/detect", response_model=dict)
+async def detect_overdue_cases(
+    db: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """Manually triggers detection of overdue payments and case generation."""
+    service = PaymentSchedulerService(db)
+    result = await service.check_and_update_overdue_payments()
+    return result
