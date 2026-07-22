@@ -1,5 +1,6 @@
-from ai-service.state.case_state import CaseState
-from ai-service.utils.logging import get_logger
+from typing import Dict, Any
+from ai_service.state.case_state import CaseState
+from ai_service.utils.logging import get_logger
 
 logger = get_logger("ai_service.financial_agent")
 

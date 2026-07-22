@@ -87,7 +87,7 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - ./ai-service:/app/ai-service
+      - ./ai_service:/app/ai_service
     depends_on:
       - rag-service
 

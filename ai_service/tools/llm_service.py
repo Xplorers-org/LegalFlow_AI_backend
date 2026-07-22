@@ -1,7 +1,7 @@
 import os
 from typing import Any
 from langchain_openai import ChatOpenAI
-from ai-service.utils.logging import get_logger
+from ai_service.utils.logging import get_logger
 
 logger = get_logger("ai_service.llm")
 

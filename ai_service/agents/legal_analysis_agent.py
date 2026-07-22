@@ -1,9 +1,9 @@
 import json
 from typing import Dict, Any
-from ai-service.state.case_state import CaseState
-from ai-service.tools.llm_service import LLMService
-from ai-service.utils.prompt_manager import PromptManager
-from ai-service.utils.logging import get_logger
+from ai_service.state.case_state import CaseState
+from ai_service.tools.llm_service import LLMService
+from ai_service.utils.prompt_manager import PromptManager
+from ai_service.utils.logging import get_logger
 
 logger = get_logger("ai_service.legal_analysis_agent")
 
