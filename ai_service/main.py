@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 
-from ai-service.graph.compliance_graph import build_compliance_graph
-from ai-service.utils.logging import setup_logging, get_logger
+from ai_service.graph.compliance_graph import build_compliance_graph
+from ai_service.utils.logging import setup_logging, get_logger
 
 setup_logging("INFO")
 logger = get_logger("ai_service.main")
@@ -160,4 +160,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("ai-service.main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("ai_service.main:app", host="0.0.0.0", port=8001, reload=True)

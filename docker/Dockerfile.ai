@@ -7,11 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ai-service/requirements.txt /app/ai-service/requirements.txt
-RUN pip install --no-cache-dir -r /app/ai-service/requirements.txt
+COPY ai_service/requirements.txt /app/ai_service/requirements.txt
+RUN pip install --no-cache-dir -r /app/ai_service/requirements.txt
 
-COPY ai-service /app/ai-service
+COPY ai_service /app/ai_service
 
 EXPOSE 8001
 
-CMD ["python", "-m", "ai-service.main"]
+CMD ["python", "-m", "ai_service.main"]
