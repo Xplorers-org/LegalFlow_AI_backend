@@ -44,7 +44,7 @@ class LeaseParserService:
             openai_api_base="https://openrouter.ai/api/v1",
             temperature=0.1,
             max_retries=3,
-            max_tokens=2500,
+            max_tokens=1000,
         )
 
         prompt = f"""
