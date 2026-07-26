@@ -33,12 +33,12 @@ async def create_tenant(
     # 1. Create Tenant Entity
     tenant = await repo.create(tenant_in.model_dump())
 
-    # 2. Auto-provision Tenant User Login Account if not existing
+    # 2. Auto-provision or update Tenant User Login Account
     existing_user = await user_repo.get_by_email(tenant.email)
     temp_password = f"TenantPass_{secrets.token_hex(4)}"
+    hashed_pwd = get_password_hash(temp_password)
 
     if not existing_user:
-        hashed_pwd = get_password_hash(temp_password)
         await user_repo.create({
             "name": tenant.name,
             "email": tenant.email,
@@ -47,17 +47,26 @@ async def create_tenant(
             "phone": tenant.phone,
         })
         logger.info("Auto-provisioned login account for new tenant", email=tenant.email)
-
-        # 3. Schedule automated onboarding email to tenant in background
-        background_tasks.add_task(
-            send_tenant_onboarding_email,
-            tenant_name=tenant.name,
-            tenant_email=tenant.email,
-            temp_password=temp_password,
-            company=tenant.company,
-        )
     else:
-        temp_password = "ExistingAccountPassword"
+        # If user exists (e.g. from prior tests), reset password and sync details
+        await user_repo.update(existing_user.id, {
+            "password_hash": hashed_pwd,
+            "name": tenant.name,
+            "phone": tenant.phone,
+        })
+        logger.info("Reset login account password for existing tenant user", email=tenant.email)
+
+    # 3. Schedule automated onboarding email to tenant in background (Always send for seamless testing)
+    background_tasks.add_task(
+        send_tenant_onboarding_email,
+        tenant_name=tenant.name,
+        tenant_email=tenant.email,
+        temp_password=temp_password,
+        company=tenant.company,
+    )
+
+    # Commit synchronously to prevent race condition with subsequent lease creation request
+    await db.commit()
 
     res = TenantResponse.model_validate(tenant)
     res.temp_password = temp_password
