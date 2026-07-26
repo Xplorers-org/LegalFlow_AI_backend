@@ -28,26 +28,30 @@ class LeaseParserService:
     @staticmethod
     def parse_lease_text(text: str) -> Dict[str, Any]:
         """Sends extracted lease text to Gemini to extract all schedules and terms in structured JSON."""
-        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        # Load OpenRouter Key from core configuration settings instead of un-migrated os.environ
+        openrouter_key = settings.OPENROUTER_API_KEY
+        
         if not openrouter_key or openrouter_key == "your_openrouter_api_key_here":
             logger.warning("OPENROUTER_API_KEY not configured. Returning fallback mock details.")
             return LeaseParserService._get_mock_fallback_data()
 
         # Initialize LLM Client pointing to OpenRouter
-        # Using google/gemini-2.5-flash as default high-speed extraction model
+        # Using google/gemini-2.5-flash as the best option for structured parsing
+        # Specifying max_tokens=2500 to bypass OpenRouter pre-flight 402 out-of-credits check on low accounts
         llm = ChatOpenAI(
             model="google/gemini-2.5-flash",
             openai_api_key=openrouter_key,
             openai_api_base="https://openrouter.ai/api/v1",
             temperature=0.1,
             max_retries=3,
+            max_tokens=2500,
         )
 
         prompt = f"""
 You are an expert commercial real estate attorney specializing in Sri Lankan tenancy laws.
-Analyze the following commercial lease agreement text and extract the key terms, schedules, and utility details.
+Analyze the following commercial lease agreement text and extract the key terms, schedules, lessor/lessee identity and utility details.
 
-Return your response EXACTLY as a JSON object matching this schema. Do not include any markdown block formatting or additional text.
+Return your response EXACTLY as a JSON object matching this schema. Do not include any markdown block formatting (like ```json) or additional text.
 
 {{
   "lessor": {{
@@ -111,7 +115,7 @@ LEASE AGREEMENT TEXT:
             
             # Remove any ```json formatting wrappers if outputted by the LLM
             if raw_content.startswith("```"):
-                lines = raw_content.split("\n")
+                lines = raw_content.strip().split("\n")
                 if lines[0].startswith("```json") or lines[0].startswith("```"):
                     raw_content = "\n".join(lines[1:-1]).strip()
 
@@ -126,22 +130,22 @@ LEASE AGREEMENT TEXT:
         """Fallback mock details if OpenRouter is offline or fails."""
         return {
             "lessor": {
-                "name": "Marlon De Silva",
-                "nic_passport": "681122340V",
-                "address": "45 Park Street, Colombo 00200"
+                "name": "Priyantha Kumara Gunasekera",
+                "nic_passport": "651002345V",
+                "address": "No. 12, Ward Place, Colombo 00700"
             },
             "lessee": {
-                "name": "Nimal Perera",
-                "nic_passport": "841122330V",
-                "address": "78 Galle Road, Colombo 00300",
+                "name": "Chathurika Dilrukshi Perera",
+                "nic_passport": "199678901234",
+                "address": "No. 23, Havelock Road, Colombo 00500",
                 "company": "Perera Textiles",
-                "email": "nimal.perera@textiles.lk",
+                "email": "chathurika.perera@textiles.lk",
                 "phone": "+94771234567"
             },
             "lease_terms": {
                 "commencement_date": "2026-08-01",
                 "expiry_date": "2027-07-31",
-                "contract_date": "2026-07-20",
+                "contract_date": "2026-08-15",
                 "monthly_rent": 250000.0,
                 "service_charge": 60000.0,
                 "deposit": 500000.0,
@@ -153,18 +157,18 @@ LEASE AGREEMENT TEXT:
                 "physical_address": "No. 156, Galle Road, Colombo 00300",
                 "assessment_number": "45/12A",
                 "local_authority": "Colombo Municipal Council",
-                "lot_plan_reference": "Lot No. 07, Plan No. 2456 by Mr. W. M. Jayasinghe, Licensed Surveyor",
-                "extent": "12.5 Perches (approximately 2,400 sq ft)",
-                "permitted_use": "General office, IT, and software business"
+                "lot_plan_reference": "Lot No. 07, Plan No. 2456 dated 12th March 2019 by Mr. W. M. Jayasinghe, Licensed Surveyor",
+                "extent": "12.5 Perches (approximately 2,400 square feet)",
+                "permitted_use": "General office, information technology, and software business use"
             },
             "second_schedule_breakdown": {
                 "base_rent": 250000.0,
-                "building_security": 25000.0,
+                "building_security": 25005.0,
                 "common_area_cleaning": 15000.0,
                 "common_area_lighting": 8000.0,
                 "elevator_lift_maintenance": 12000.0,
-                "annual_escalation": "10% per annum on Commencement Date anniversary"
-            },
+                "annual_escalation": "10% per annum, effective each anniversary of the Commencement Date"
+              },
             "third_schedule_utilities": {
                 "electricity_provider": "Ceylon Electricity Board (CEB)",
                 "electricity_account_no": "214-56789-002",
