@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging, get_logger
-from backend.app.api.v1 import auth, tenants, leases, payments, cases, documents, ai
+from backend.app.api.v1 import auth, tenants, leases, payments, cases, documents, ai, utility_bills
 
 setup_logging(settings.LOG_LEVEL)
 logger = get_logger("backend.main")
@@ -44,6 +44,7 @@ app.include_router(payments.router, prefix="/api/v1")
 app.include_router(cases.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
+app.include_router(utility_bills.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])
