@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 from enum import Enum
-from sqlalchemy import String, Numeric, Integer, Date, ForeignKey, Text
+from sqlalchemy import String, Numeric, Integer, Date, ForeignKey, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.app.models.base_class import BaseModel
@@ -33,8 +33,10 @@ class Lease(BaseModel):
     lease_end: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[LeaseStatus] = mapped_column(String(50), default=LeaseStatus.ACTIVE, nullable=False)
     pdf_storage_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    extracted_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
+
     tenant = relationship("Tenant", back_populates="leases")
     payments = relationship("Payment", back_populates="lease", cascade="all, delete-orphan")
     cases = relationship("Case", back_populates="lease", cascade="all, delete-orphan")

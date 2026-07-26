@@ -17,6 +17,7 @@ class LeaseBase(BaseModel):
     lease_start: date
     lease_end: date
     status: LeaseStatus = LeaseStatus.ACTIVE
+    extracted_metadata: dict | None = None
 
 
 class LeaseCreate(LeaseBase):
@@ -35,6 +36,7 @@ class LeaseUpdate(BaseModel):
     lease_start: date | None = None
     lease_end: date | None = None
     status: LeaseStatus | None = None
+    extracted_metadata: dict | None = None
 
 
 class LeaseResponse(LeaseBase):
