@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # OpenRouter & LLM Settings
     OPENROUTER_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
     LLM_MODEL: str = "google/gemini-2.5-flash"
     LLM_TEMPERATURE: float = 0.1
 

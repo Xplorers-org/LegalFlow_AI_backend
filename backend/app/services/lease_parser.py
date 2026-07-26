@@ -28,24 +28,18 @@ class LeaseParserService:
     @staticmethod
     def parse_lease_text(text: str) -> Dict[str, Any]:
         """Sends extracted lease text to Gemini to extract all schedules and terms in structured JSON."""
-        # Load OpenRouter Key from core configuration settings instead of un-migrated os.environ
-        openrouter_key = settings.OPENROUTER_API_KEY
+        import os
+        import httpx
+
+        # Load API key from environment or Pydantic settings
+        api_key = settings.GEMINI_API_KEY or settings.OPENROUTER_API_KEY
         
-        if not openrouter_key or openrouter_key == "your_openrouter_api_key_here":
-            logger.warning("OPENROUTER_API_KEY not configured. Returning fallback mock details.")
+        if not api_key or api_key == "your_openrouter_api_key_here":
+            logger.warning("No API key configured. Returning fallback mock details.")
             return LeaseParserService._get_mock_fallback_data()
 
-        # Initialize LLM Client pointing to OpenRouter
-        # Using google/gemini-2.5-flash as the best option for structured parsing
-        # Specifying max_tokens=2500 to bypass OpenRouter pre-flight 402 out-of-credits check on low accounts
-        llm = ChatOpenAI(
-            model="google/gemini-2.5-flash",
-            openai_api_key=openrouter_key,
-            openai_api_base="https://openrouter.ai/api/v1",
-            temperature=0.1,
-            max_retries=3,
-            max_tokens=1000,
-        )
+        # Check if the key is a Google AI Studio Key (starts with AQ. or AIzaSy)
+        is_google_key = api_key.startswith("AQ.") or api_key.startswith("AIzaSy")
 
         prompt = f"""
 You are an expert commercial real estate attorney specializing in Sri Lankan tenancy laws.
@@ -98,7 +92,9 @@ Return your response EXACTLY as a JSON object matching this schema. Do not inclu
     "electricity_provider": "Ceylon Electricity Board (CEB)",
     "electricity_account_no": "Electricity account number if available",
     "water_provider": "National Water Supply and Drainage Board (NWSDB)",
-    "water_account_no": "Water account number if available"
+    "water_account_no": "Water account number if available",
+    "liability_for_consumption": "Description of utility payment liability E.g. Lessee, exclusively, from the Commencement Date",
+    "recovery_of_arrears_on_termination": "Description of recovery of arrears on termination E.g. Firstly from the Security Deposit (Clause 8); balance recoverable by civil action (Clause 6.5)"
   }}
 }}
 
@@ -108,8 +104,44 @@ LEASE AGREEMENT TEXT:
 ---
 """
 
+        if is_google_key:
+            logger.info("Invoking Gemini 3.5 Flash Lite natively via Google AI Studio API")
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.1,
+                        "maxOutputTokens": 2048,
+                        "responseMimeType": "application/json"
+                    }
+                }
+                resp = httpx.post(url, json=payload, timeout=30.0)
+                if resp.status_code == 200:
+                    raw_content = resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+                    if raw_content.startswith("```"):
+                        lines = raw_content.strip().split("\n")
+                        if lines[0].startswith("```json") or lines[0].startswith("```"):
+                            raw_content = "\n".join(lines[1:-1]).strip()
+                    return json.loads(raw_content)
+                else:
+                    logger.error("Google AI Studio API returned error", status_code=resp.status_code, body=resp.text)
+                    raise ValueError(f"Google API Error: {resp.text}")
+            except Exception as e:
+                logger.error("Failed to parse lease terms with native Google API", error=str(e))
+                return LeaseParserService._get_mock_fallback_data()
+
+        # Fallback to OpenRouter ChatOpenAI
         try:
             logger.info("Invoking Gemini OpenRouter for lease extraction")
+            llm = ChatOpenAI(
+                model="google/gemini-2.5-flash",
+                openai_api_key=api_key,
+                openai_api_base="https://openrouter.ai/api/v1",
+                temperature=0.1,
+                max_retries=3,
+                max_tokens=600,
+            )
             resp = llm.invoke(prompt)
             raw_content = resp.content.strip()
             
@@ -122,7 +154,7 @@ LEASE AGREEMENT TEXT:
             parsed_data = json.loads(raw_content)
             return parsed_data
         except Exception as e:
-            logger.error("Failed to parse lease terms with LLM", error=str(e))
+            logger.error("Failed to parse lease terms with LLM via OpenRouter", error=str(e))
             return LeaseParserService._get_mock_fallback_data()
 
     @staticmethod
@@ -173,6 +205,8 @@ LEASE AGREEMENT TEXT:
                 "electricity_provider": "Ceylon Electricity Board (CEB)",
                 "electricity_account_no": "214-56789-002",
                 "water_provider": "National Water Supply and Drainage Board (NWSDB)",
-                "water_account_no": "0345-1122334"
+                "water_account_no": "0345-1122334",
+                "liability_for_consumption": "Lessee, exclusively, from the Commencement Date",
+                "recovery_of_arrears_on_termination": "Firstly from the Security Deposit (Clause 8); balance recoverable by civil action (Clause 6.5)"
             }
         }
