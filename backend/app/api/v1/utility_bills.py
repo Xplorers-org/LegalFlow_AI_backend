@@ -7,8 +7,6 @@ from sqlalchemy import text
 from pydantic import BaseModel
 
 from backend.app.core.database import get_db
-from backend.app.api.v1.auth import get_current_user
-from backend.app.schemas.user import UserResponse
 
 router = APIRouter(prefix="/utility-bills", tags=["Utility Bills"])
 
@@ -23,28 +21,18 @@ class UtilityBillReconcile(BaseModel):
     account_number: str
     utility_type: str
 
-class UtilityBillResponse(BaseModel):
-    id: uuid.UUID
-    lease_id: uuid.UUID
-    utility_type: str
-    account_number: str
-    amount: float
-    due_date: date
-    status: str
-    created_at: str
-    updated_at: str
-
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_utility_bill(
     bill_in: UtilityBillCreate,
     db: AsyncSession = Depends(get_db)
 ):
     """Creates a new utility bill by matching the account number to a tenant lease."""
-    # Find matching lease
+    # Find matching lease and get the tenant's email address
     find_lease_sql = text("""
-        SELECT id FROM leases 
-        WHERE (extracted_metadata->'third_schedule_utilities'->>'electricity_account_no' = :acc_num)
-           OR (extracted_metadata->'third_schedule_utilities'->>'water_account_no' = :acc_num)
+        SELECT l.id, t.email FROM leases l
+        JOIN tenants t ON l.tenant_id = t.id
+        WHERE (l.extracted_metadata->'third_schedule_utilities'->>'electricity_account_no' = :acc_num)
+           OR (l.extracted_metadata->'third_schedule_utilities'->>'water_account_no' = :acc_num)
         LIMIT 1;
     """)
     res = await db.execute(find_lease_sql, {"acc_num": bill_in.account_number})
@@ -56,6 +44,7 @@ async def create_utility_bill(
         )
     
     lease_id = row[0]
+    tenant_email = row[1]
     
     # Insert utility bill
     insert_sql = text("""
@@ -82,7 +71,8 @@ async def create_utility_bill(
         "due_date": new_row[5].isoformat(),
         "status": new_row[6],
         "created_at": new_row[7].isoformat(),
-        "updated_at": new_row[8].isoformat()
+        "updated_at": new_row[8].isoformat(),
+        "tenant_email": tenant_email
     }
 
 @router.post("/reconcile", status_code=status.HTTP_200_OK)
