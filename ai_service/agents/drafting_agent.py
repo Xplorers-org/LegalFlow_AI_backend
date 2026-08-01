@@ -30,6 +30,7 @@ def drafting_agent_node(state: CaseState) -> Dict[str, Any]:
 
     prompt_mgr = PromptManager()
     llm_svc = LLMService()
+    legal_context = state.get("retrieved_legal_context", "")
 
     content = ""
 
@@ -50,6 +51,7 @@ def drafting_agent_node(state: CaseState) -> Dict[str, Any]:
                 total_payable=f"{total_payable:,.2f}",
                 expiry_date=expiry_30_days,
                 statutory_citations="Section 3 & 4 of Recovery of Possession of Premises Given on Lease Act No. 1 of 2023",
+                legal_context=legal_context,
             )
             content = llm_svc.invoke(prompt_text)
         except Exception as e:
@@ -73,6 +75,7 @@ def drafting_agent_node(state: CaseState) -> Dict[str, Any]:
                 total_payable=f"{total_payable:,.2f}",
                 demand_due_days="7",
                 statutory_citations="Section 3 & 4 of Recovery of Possession of Premises Given on Lease Act No. 1 of 2023",
+                legal_context=legal_context,
             )
             content = llm_svc.invoke(prompt_text)
         except Exception as e:

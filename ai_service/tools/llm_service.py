@@ -27,6 +27,7 @@ class LLMService:
                 temperature=temperature,
                 max_retries=3,
                 request_timeout=60.0,
+                max_tokens=2000,
             )
         elif openai_key and openai_key != "your_openai_api_key_optional":
             logger.info("Initializing Direct OpenAI LLM Client", model="gpt-4o")
