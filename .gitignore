@@ -128,7 +128,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -185,3 +184,5 @@ chroma.sqlite3
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+config.bat
+node_modules
