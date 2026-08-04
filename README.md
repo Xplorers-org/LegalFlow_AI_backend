@@ -59,13 +59,20 @@ graph TD
 
 ## 🚀 Setup & Installation Guide
 
-### Option A: Docker Setup (Recommended)
-
-1.  **Clone the repository** and copy the environment template:
-    ```bash
-    cp .env.example .env
-    ```
-2.  **Configure `.env`**: Add your `OPENROUTER_API_KEY` or `GEMINI_API_KEY` for LLM generation.
+1.  **Clone the repositories** and copy the environment templates:
+    *   **Backend Repository**:
+        ```bash
+        git clone https://github.com/Xplorers-org/LegalFlow_AI_backend.git
+        cd LegalFlow_AI_backend
+        cp .env.example .env
+        ```
+    *   **Frontend Repository**:
+        ```bash
+        git clone https://github.com/Xplorers-org/LegalFlow_Al_frontend.git
+        cd LegalFlow_Al_frontend
+        cp .env.example .env
+        ```
+2.  **Configure environment variables**: Add your API keys and parameters in both `.env` files.
 3.  **Spin up all services**:
     ```bash
     docker-compose up --build -d
