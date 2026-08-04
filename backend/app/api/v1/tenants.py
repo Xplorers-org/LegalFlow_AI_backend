@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.database import get_db
 from backend.app.core.security import get_password_hash
 from backend.app.api.v1.auth import get_current_user
+from backend.app.api.dependencies import get_tenant_repository, get_user_repository
 from backend.app.repositories.tenant_repository import TenantRepository
 from backend.app.repositories.user_repository import UserRepository
 from backend.app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse
@@ -24,12 +25,11 @@ async def create_tenant(
     tenant_in: TenantCreate,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    repo: TenantRepository = Depends(get_tenant_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Creates a commercial tenant profile AND auto-provisions a tenant User account for login."""
-    repo = TenantRepository(db)
-    user_repo = UserRepository(db)
-
     # 1. Create Tenant Entity
     tenant = await repo.create(tenant_in.model_dump())
 
@@ -77,11 +77,10 @@ async def create_tenant(
 async def list_tenants(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    repo: TenantRepository = Depends(get_tenant_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Retrieves all commercial tenants."""
-    repo = TenantRepository(db)
     tenants = await repo.get_all(skip=skip, limit=limit)
     return [TenantResponse.model_validate(t) for t in tenants]
 
@@ -89,11 +88,10 @@ async def list_tenants(
 @router.get("/{id}", response_model=TenantResponse)
 async def get_tenant(
     id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    repo: TenantRepository = Depends(get_tenant_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Retrieves a specific tenant by UUID."""
-    repo = TenantRepository(db)
     tenant = await repo.get(id)
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
@@ -104,11 +102,10 @@ async def get_tenant(
 async def update_tenant(
     id: uuid.UUID,
     tenant_in: TenantUpdate,
-    db: AsyncSession = Depends(get_db),
+    repo: TenantRepository = Depends(get_tenant_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Updates a tenant record."""
-    repo = TenantRepository(db)
     tenant = await repo.update(id, tenant_in.model_dump(exclude_unset=True))
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
@@ -118,11 +115,10 @@ async def update_tenant(
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tenant(
     id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    repo: TenantRepository = Depends(get_tenant_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Deletes a tenant record."""
-    repo = TenantRepository(db)
     deleted = await repo.delete(id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")

@@ -37,6 +37,37 @@ class FinancialEngine:
         return round(interest, 2)
 
     @classmethod
+    def _process_overdue_payment(
+        cls,
+        p: Payment,
+        grace_period_days: int,
+        interest_rate_pa: float,
+        current_date: date
+    ) -> Dict[str, Any] | None:
+        """Processes a single payment item and calculates its accrued interest if overdue."""
+        if p.status not in [PaymentStatus.OVERDUE, PaymentStatus.PENDING, PaymentStatus.PARTIALLY_PAID]:
+            return None
+
+        o_days = cls.calculate_overdue_days(p.due_date, grace_period_days, current_date)
+        if o_days <= 0 and p.due_date >= current_date:
+            return None
+
+        unpaid_balance = float(p.amount_due) - float(p.amount_paid)
+        interest = cls.calculate_statutory_interest(
+            unpaid_balance, o_days, float(interest_rate_pa)
+        )
+
+        return {
+            "payment_id": str(p.id),
+            "due_date": p.due_date.isoformat(),
+            "amount_due": float(p.amount_due),
+            "amount_paid": float(p.amount_paid),
+            "unpaid_balance": round(unpaid_balance, 2),
+            "overdue_days": o_days,
+            "statutory_interest": interest,
+        }
+
+    @classmethod
     def compile_financial_facts(
         cls,
         lease: Lease,
@@ -47,34 +78,20 @@ class FinancialEngine:
         if current_date is None:
             current_date = date.today()
 
-        total_due = 0.0
-        total_paid = 0.0
+        total_due = sum(float(p.amount_due) for p in payments)
+        total_paid = sum(float(p.amount_paid) for p in payments)
+        
         overdue_payments = []
         max_overdue_days = 0
 
         for p in payments:
-            total_due += float(p.amount_due)
-            total_paid += float(p.amount_paid)
-            
-            # Check if overdue
-            if p.status in [PaymentStatus.OVERDUE, PaymentStatus.PENDING, PaymentStatus.PARTIALLY_PAID]:
-                o_days = cls.calculate_overdue_days(p.due_date, lease.grace_period_days, current_date)
-                if o_days > 0 or p.due_date < current_date:
-                    unpaid_balance = float(p.amount_due) - float(p.amount_paid)
-                    interest = cls.calculate_statutory_interest(
-                        unpaid_balance, o_days, float(lease.interest_rate_pa)
-                    )
-                    overdue_payments.append({
-                        "payment_id": str(p.id),
-                        "due_date": p.due_date.isoformat(),
-                        "amount_due": float(p.amount_due),
-                        "amount_paid": float(p.amount_paid),
-                        "unpaid_balance": round(unpaid_balance, 2),
-                        "overdue_days": o_days,
-                        "statutory_interest": interest,
-                    })
-                    if o_days > max_overdue_days:
-                        max_overdue_days = o_days
+            overdue_item = cls._process_overdue_payment(
+                p, lease.grace_period_days, float(lease.interest_rate_pa), current_date
+            )
+            if overdue_item:
+                overdue_payments.append(overdue_item)
+                if overdue_item["overdue_days"] > max_overdue_days:
+                    max_overdue_days = overdue_item["overdue_days"]
 
         outstanding_arrears = round(max(0.0, total_due - total_paid), 2)
         total_interest = sum(item["statutory_interest"] for item in overdue_payments)

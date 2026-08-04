@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db
 from backend.app.api.v1.auth import get_current_user
+from backend.app.api.dependencies import get_document_repository
 from backend.app.repositories.document_repository import DocumentRepository
 from backend.app.schemas.document import DocumentResponse, DocumentApprovalRequest
 from backend.app.schemas.user import UserResponse
@@ -20,11 +21,10 @@ async def list_documents(
     case_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
+    repo: DocumentRepository = Depends(get_document_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Retrieves generated legal documents."""
-    repo = DocumentRepository(db)
     if case_id:
         docs = await repo.get_by_case(case_id)
     elif lease_id:
@@ -37,11 +37,10 @@ async def list_documents(
 @router.get("/{id}", response_model=DocumentResponse)
 async def get_document(
     id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    repo: DocumentRepository = Depends(get_document_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Retrieves a specific generated legal document by UUID."""
-    repo = DocumentRepository(db)
     doc = await repo.get(id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -52,11 +51,10 @@ async def get_document(
 async def approve_or_reject_document(
     id: uuid.UUID,
     approval_in: DocumentApprovalRequest,
-    db: AsyncSession = Depends(get_db),
+    repo: DocumentRepository = Depends(get_document_repository),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Human-in-the-loop endpoint for landlord to approve or reject generated legal notices."""
-    repo = DocumentRepository(db)
     doc = await repo.get(id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
